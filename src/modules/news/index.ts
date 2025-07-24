@@ -1,6 +1,7 @@
 import { Client } from "discord.js";
 import cron from "node-cron";
 import sendLog from "../../shared/utils/log";
+import getNews from "./services/getNews";
 
 interface Article {
   id: string;
@@ -17,24 +18,10 @@ interface Article {
   };
 }
 
-const GNEWS_API_KEY = process.env['GNEWS_API_KEY'];
-
-const query = encodeURIComponent(`"desenvolvimento de software" OR "engenharia de software" OR "ciência da computação" OR blockchain OR ia OR iot OR amd OR intel OR nvidia OR apple OR microsoft OR google OR ibm OR meta`);
-
-async function getTechNews() {
-  const url = `https://gnews.io/api/v4/search?q=${query}&lang=pt&country=br&max=1&apikey=${GNEWS_API_KEY}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar notícias');
-  }
-
-  const data = await response.json();
-  return data?.articles || [];
-}
+const articlesId = new Set();
 
 async function sendNews(client: Client<boolean>) {
-  const articles = await getTechNews() as Article[];
+  const articles = await getNews({ limit: 2 }) as Article[];
 
   if (articles.length === 0) {
     console.log('Nenhuma notícia encontrada no momento.');
@@ -42,20 +29,44 @@ async function sendNews(client: Client<boolean>) {
   }
 
   for (const article of articles) {
+    if (articlesId.has(String(article.id))) {
+      continue;
+    }
+
     await sendLog(client, {
       title: article.title,
       color: '#FFAF03',
-      description: `${article.description}\n\n[Leia o artigo completo](${article.url})`,
+      description: `${article.description}\n\n[Leia o artigo completo](${article.url})\n\nFonte: [${article.source.name}](${article.source.url})`,
       fields: []
     }, process.env['NEWS_CHANNEL_ID']!);
+
+    articlesId.add(String(article.id));
   }
 }
 
 const newsModule = {
   load: (client: Client<boolean>) => {
-    cron.schedule('0 */30 * * * *', () => {
+    const task = cron.schedule('0 */30 * * * *', () => {
       sendNews(client);
     });
+
+    // Scheduler para parar às 24h
+    cron.schedule('0 0 * * *', () => {
+      articlesId.clear();
+      task.stop();
+    });
+
+    // Scheduler para iniciar às 8h
+    cron.schedule('0 8 * * *', () => {
+      task.start();
+    });
+
+    // Para a task se estivermos fora do horário ao reiniciar o servidor
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 8 || hour >= 24) {
+      task.stop();
+    }
   }
 }
 
