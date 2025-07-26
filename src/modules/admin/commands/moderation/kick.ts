@@ -1,20 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-  .setName('kick')
-  .setDescription('Expulsa um usuário')
-  .addUserOption(option => 
-		option.setName('usuário')
-			.setDescription('Qual usuário expulsar')
-			.setRequired(true)
-	)
-	.addStringOption(option => 
-		option.setName('motivo')
-			.setDescription('Por que expulsar')
-			.setRequired(true)
-	)
-  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = interaction.options.getUser('usuário', true);
@@ -23,7 +9,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
   const targetMember = interaction.guild!.members.cache.get(targetUser.id);
   
   if (targetMember && !targetMember.kickable) {
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Não é possível expulsar este usuário.', 
       ephemeral: true 
     });
@@ -56,14 +42,29 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['KICK_LOG_ID']!);
   } catch (error) {
     console.error('Erro no comando kick:', error);
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Erro ao expulsar usuário.', 
       ephemeral: true 
     });
   }
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'kick',
+	description: 'Expulsa um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'Qual usuário expulsar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que expulsar',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.KickMembers
+}, execute);

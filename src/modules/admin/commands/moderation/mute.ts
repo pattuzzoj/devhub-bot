@@ -1,20 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel, VoiceState } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-	.setName('mute')
-	.setDescription('Silencia um usuário')
-	.addUserOption(option =>
-		option.setName('usuário')
-			.setDescription('Qual usuário mutar')
-			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que mutar')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
 	const targetUser = interaction.options.getUser('usuário', true);
@@ -26,7 +12,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
   const voiceState = targetMember?.voice;
   
   if (!voiceState?.channelId) {
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Usuário não está em canal de voz.', 
       ephemeral: true 
     });
@@ -34,7 +20,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
   
   // Verificar se o bot tem permissão para mutar o usuário
   if (!voiceState.channel?.permissionsFor(interaction.guild!.members.me!)?.has(PermissionFlagsBits.MuteMembers)) {
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Não é possível mutar este usuário.', 
       ephemeral: true 
     });
@@ -68,14 +54,29 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['MUTE_LOG_ID']!);
 	} catch (error) {
     console.error('Erro no comando mute:', error);
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Erro ao mutar usuário.', 
       ephemeral: true 
     });
   }
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'mute',
+	description: 'Silencia um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'Qual usuário mutar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que mutar',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ModerateMembers
+}, execute);

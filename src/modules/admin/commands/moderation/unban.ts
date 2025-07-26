@@ -1,20 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-  .setName('unban')
-  .setDescription('Desbane um usuário')
-  .addStringOption(option => 
-    option.setName('user_id')
-      .setDescription('ID do usuário')
-      .setRequired(true)
-  )
-  .addStringOption(option => 
-    option.setName('motivo')
-      .setDescription('Por que desbanir')
-      .setRequired(true)
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
   const userId = interaction.options.getString('user_id', true);
@@ -22,7 +8,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
   
   // Verificar se o ID é válido
   if (!/^\d{17,19}$/.test(userId)) {
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'ID de usuário inválido.', 
       ephemeral: true 
     });
@@ -35,7 +21,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
     
     // Verificar se o usuário está banido
     if (!bannedUser) {
-      return interaction.reply({ 
+      return await interaction.reply({ 
         content: 'Usuário não está banido.', 
         ephemeral: true 
       });
@@ -68,14 +54,29 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['UNBAN_LOG_ID']!);
   } catch (error) {
     console.error('Erro no comando unban:', error);
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Erro ao desbanir usuário.', 
       ephemeral: true 
     });
   }
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'unban',
+	description: 'Desbane um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'user_id',
+			description: 'ID do usuário',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que desbanir',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.BanMembers
+}, execute);

@@ -1,15 +1,35 @@
 import 'dotenv/config';
-import { Client, Collection, GatewayIntentBits } from 'discord.js';
-import type { Command } from './src/shared/types';
-import { INTENTS, TOKEN } from './src/config';
-import adminModule from "./src/modules/admin";
-import aiModule from "./src/modules/ai";
+import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import newsModule from "./src/modules/news";
+import { commands } from './src/shared/handlers/createCommand';
+import registerCommandDiscord from './src/shared/services/registerCommandDiscord';
+import { loadEvents } from './src/shared/handlers/createEvent';
+import "./src/modules/translate";
+import './src/modules/admin';
+import "./src/modules/ai";
+import "./src/shared/events";
+import type { Command } from './src/shared/types';
 
-const intents = INTENTS.map(intent => GatewayIntentBits[intent as keyof typeof GatewayIntentBits]);
-const client = new Client({ intents }) as Client & { commands: Collection<string, Command> };
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+}) as Client & { commands: Collection<string, Command> };
 
-const modules = [adminModule, aiModule, newsModule];
-modules.forEach(module => module.load(client));
+newsModule.init(client);
 
-client.login(TOKEN);
+const modules = [newsModule];
+modules.forEach(module => module.init(client));
+
+// @ts-ignore
+client.commands = commands;
+registerCommandDiscord(client.commands);
+loadEvents(client);
+
+client.once(Events.ClientReady, (readyClient: Client<true>) => {
+  console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+})
+
+client.login(process.env['DISCORD_TOKEN']);

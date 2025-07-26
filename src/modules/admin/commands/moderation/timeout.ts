@@ -1,27 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-  .setName('timeout')
-  .setDescription('Aplica timeout em um usuário')
-  .addUserOption(option => 
-    option.setName('usuário')
-      .setDescription('Qual usuário silenciar')
-      .setRequired(true)
-  )
-  .addIntegerOption(option => 
-    option.setName('duracao')
-      .setDescription('Quantos minutos (0 para desmutar)')
-      .setRequired(true)
-      .setMinValue(0)
-      .setMaxValue(40320)
-  )
-  .addStringOption(option => 
-    option.setName('motivo')
-      .setDescription('Por que silenciar')
-      .setRequired(true)
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = interaction.options.getUser('usuário', true);
@@ -31,7 +10,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
   const targetMember = interaction.guild!.members.cache.get(targetUser.id);
   
   if (targetMember && !targetMember.moderatable) {
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Não é possível aplicar timeout neste usuário.', 
       ephemeral: true 
     });
@@ -99,14 +78,37 @@ async function execute(interaction: ChatInputCommandInteraction) {
     }
   } catch (error) {
     console.error('Erro no comando timeout:', error);
-    return interaction.reply({ 
+    return await interaction.reply({ 
       content: 'Erro ao aplicar timeout.', 
       ephemeral: true 
     });
   }
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'timeout',
+	description: 'Aplica timeout em um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'Qual usuário silenciar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.Integer,
+			name: 'duracao',
+			description: 'Quantos minutos (0 para desmutar)',
+      minLength: 1,
+      maxLength: 1500,
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que silenciar',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ModerateMembers
+}, execute);

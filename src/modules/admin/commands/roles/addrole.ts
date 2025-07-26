@@ -1,25 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-	.setName('addrole')
-	.setDescription('Adiciona um cargo a um usuário')
-	.addUserOption(option =>
-		option.setName('usuário')
-			.setDescription('Para quem dar cargo')
-			.setRequired(true)
-	)
-	.addRoleOption(option =>
-		option.setName('cargo')
-			.setDescription('Qual cargo dar')
-			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que dar cargo')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
 	const targetUser = interaction.options.getUser('usuário', true);
@@ -29,7 +10,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 	const targetMember = interaction.guild!.members.cache.get(targetUser.id);
 
 	if (!targetMember) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Usuário não encontrado no servidor.',
 			ephemeral: true
 		});
@@ -37,7 +18,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o cargo já está no usuário
 	if (targetMember.roles.cache.has(role.id)) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: `<@${targetUser.id}> já possui o cargo <@&${role.id}>.`,
 			ephemeral: true
 		});
@@ -45,7 +26,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o bot pode gerenciar o cargo
 	if (role.position >= interaction.guild!.members.me!.roles.highest.position) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Não é possível adicionar este cargo (posição muito alta).',
 			ephemeral: true
 		});
@@ -53,7 +34,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o usuário pode gerenciar o cargo
 	if (role.position >= (interaction.member as any).roles.highest.position && interaction.user.id !== interaction.guild!.ownerId) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Você não pode adicionar este cargo (posição muito alta).',
 			ephemeral: true
 		});
@@ -91,14 +72,35 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['ADDROLE_LOG_ID']!);
 	} catch (error) {
 		console.error('Erro no comando addrole:', error);
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Erro ao adicionar cargo.',
 			ephemeral: true
 		});
 	}
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'addrole',
+	description: 'Adiciona um cargo a um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'Para quem dar cargo',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.Role,
+			name: 'cargo',
+			description: 'Qual cargo dar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que dar cargo',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ManageRoles
+}, execute);

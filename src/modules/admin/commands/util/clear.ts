@@ -1,32 +1,17 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits, TextChannel } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-	.setName('clear')
-	.setDescription('Limpa mensagens do canal')
-	.addIntegerOption(option =>
-		option.setName('quantidade')
-			.setDescription('Quantas mensagens apagar')
-			.setRequired(true)
-			.setMinValue(1)
-			.setMaxValue(100)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que limpar')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
-	const amount = interaction.options.getInteger('quantidade', true);
-	const reason = interaction.options.getString('motivo', true);
-	
+	console.log("comando clear")
+
 	try {
+		const amount = interaction.options.getInteger('quantidade', true);
+		const reason = interaction.options.getString('motivo', true);
 		const channel = interaction.channel as TextChannel;
 		
 		if (!channel) {
-			return interaction.reply({ 
+			return await interaction.reply({ 
 				content: 'Canal não encontrado.', 
 				ephemeral: true 
 			});
@@ -41,7 +26,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		);
 		
 		if (filteredMessages.size === 0) {
-			return interaction.reply({ 
+			return await interaction.reply({ 
 				content: 'Não há mensagens para deletar (mensagens muito antigas).', 
 				ephemeral: true 
 			});
@@ -73,18 +58,33 @@ async function execute(interaction: ChatInputCommandInteraction) {
 				inline: true
 			}]
 		}, process.env['CLEAR_LOG_ID']!);
-		
-
 	} catch (error) {
 		console.error('Erro no comando clear:', error);
-		return interaction.reply({ 
+		return await interaction.reply({ 
 			content: 'Erro ao limpar mensagens.', 
 			ephemeral: true 
 		});
 	}
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'clear',
+	description: 'Limpa mensagens do canal',
+	options: [
+		{
+			type: ApplicationCommandOptionType.Integer,
+			name: 'quantidade',
+			description: 'Quantas mensagens apagar',
+			minLength: 1,
+			maxLength: 100,
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que limpar',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ManageMessages
+}, execute);

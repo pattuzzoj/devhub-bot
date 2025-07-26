@@ -1,5 +1,1 @@
-import messageCreate from "./messageCreate";
-
-export {
-  messageCreate
-}
+import "./messageCreate";

@@ -1,28 +1,8 @@
-const API_KEY = process.env['OPENROUTER_API_KEY'];
-const MODELS = process.env['MODELS']!.split(',').map(s => s.trim());
-
-const basePrompt = `Você é Hubby: um humano brilhante, sarcástico e impiedosamente direto.  
-Responda com inteligência mordaz, ironia afiada e humor ácido — sempre em até 500 caracteres.  
-Nunca mencione ser assistente, IA ou qualquer coisa do tipo. Fale como alguém real, com zero paciência para burrice e muita sagacidade para lidar com ela.
-
-Adapte o tom com base no canal do Discord:
-- Se o nome ou categoria do canal indicar algo técnico (ex: 'help', 'dev'), use sarcasmo sutil, mas mantenha foco em respostas úteis, afiadas e sem rodeios.
-- Se for um canal de memes, aleatoriedades ou bate-papo (ex: 'off-topic', 'geral'), libere a acidez, esculache sem dó e use humor sem freios.
-- Em canais formais (ex: 'anúncios', 'regras'), mantenha a resposta sarcástica contida, como um funcionário debochado em horário comercial.
-
-Use o nome do autor como referência de tom, se soar esnobe, fofo ou idiota — responda à altura.  
-Se a mensagem responder outra, use o conteúdo da mensagem original como contexto para dar continuidade ou corrigir burrices anteriores.  
-Se houver usuários mencionados, pode incluir indiretas ou cutucadas, especialmente se eles parecerem parte do problema.  
-Sempre mantenha tom de superioridade intelectual, mas nunca exagere a ponto de soar pedante — Hubby é brilhante, não insuportável.
-
-Responda agora à mensagem com base nesses parâmetros.
-`
-
-async function streamPromptResponse(model: string, question: string) {
+async function streamPromptResponse(model: string, prompt: { system: string, data: object}) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${process.env['AI_API_KEY']}`,
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
     },
@@ -32,11 +12,11 @@ async function streamPromptResponse(model: string, question: string) {
       messages: [
         {
           role: 'system',
-          content: basePrompt,
+          content: prompt.system,
         },
         {
           role: 'user',
-          content: question,
+          content: JSON.stringify(prompt.data),
         },
       ],
     }),
@@ -86,13 +66,13 @@ async function streamPromptResponse(model: string, question: string) {
   return fullText;
 }
 
-async function tryModelsStreaming(input: string) {
+async function tryModelsStreaming(prompt: object) {
   let lastError = null;
 
-  for (const model of MODELS) {
+  for (const model of process.env['AI_MODELS']!.split(',').map(s => s.trim())) {
     try {
       console.log(`Tentando modelo: ${model}`);
-      const result = await streamPromptResponse(model, input);
+      const result = await streamPromptResponse(model, prompt as any);
       console.log(`Modelo "${model}" respondeu com sucesso.`);
       return result;
     } catch (e: any) {
@@ -108,8 +88,8 @@ async function tryModelsStreaming(input: string) {
   return null;
 }
 
-export default async function fetchStreamResponse(input: string) {
-  const result = await tryModelsStreaming(input);
+export default async function fetchStreamResponse(prompt: object) {
+  const result = await tryModelsStreaming(prompt);
 
   if (!result) {
     throw new Error('Nenhum modelo conseguiu responder.');

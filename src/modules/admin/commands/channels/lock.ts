@@ -1,21 +1,6 @@
-import { ChannelType, ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder, TextChannel, VoiceChannel } from "discord.js";
+import { ApplicationCommandOptionType, ChannelType, ChatInputCommandInteraction, PermissionFlagsBits, TextChannel, VoiceChannel } from "discord.js";
 import sendLog from "../../../../shared/utils/log";
-
-const data = new SlashCommandBuilder()
-	.setName('lock')
-	.setDescription('Bloqueia um canal')
-	.addChannelOption(option =>
-		option.setName('canal')
-			.setDescription('Qual canal bloquear')
-			.setRequired(true)
-			.addChannelTypes(ChannelType.GuildText, ChannelType.GuildVoice)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que bloquear')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels);
+import { createCommand } from "../../../../shared/handlers/createCommand";
 
 async function execute(interaction: ChatInputCommandInteraction) {
 	const targetChannel = (interaction.options.getChannel('canal') || interaction.channel) as TextChannel | VoiceChannel;
@@ -23,7 +8,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 	const everyoneRole = interaction.guild!.roles.everyone;
 
 	if (!targetChannel) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Canal não encontrado.',
 			ephemeral: true
 		});
@@ -35,7 +20,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 		// Se o canal já estiver bloqueado, informar ao usuário
 		if (currentPerms?.deny.has(PermissionFlagsBits.SendMessages)) {
-			return interaction.reply({
+			return await interaction.reply({
 				content: `Canal <#${targetChannel.id}> já está bloqueado.`,
 				ephemeral: true
 			});
@@ -72,14 +57,29 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['LOCK_LOG_ID']!);
 	} catch (error) {
 		console.error('Erro no comando lock:', error);
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Erro ao bloquear canal.',
 			ephemeral: true
 		});
 	}
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'lock',
+	description: 'Bloqueia um canal',
+	options: [
+		{
+			type: ApplicationCommandOptionType.Channel,
+			name: 'canal',
+			description: 'Qual canal bloquear',
+			required: true,
+			channelTypes: [ChannelType.GuildText, ChannelType.GuildVoice]
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que bloquear',
+			required: true,
+		}
+	]
+}, execute);

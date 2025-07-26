@@ -1,25 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-	.setName('removerole')
-	.setDescription('Remove um cargo de um usuário')
-	.addUserOption(option =>
-		option.setName('usuário')
-			.setDescription('De quem tirar cargo')
-			.setRequired(true)
-	)
-	.addRoleOption(option =>
-		option.setName('cargo')
-			.setDescription('Qual cargo tirar')
-			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que tirar cargo')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
 	const targetUser = interaction.options.getUser('usuário', true);
@@ -29,7 +10,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 	const targetMember = interaction.guild!.members.cache.get(targetUser.id);
 
 	if (!targetMember) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Usuário não encontrado no servidor.',
 			ephemeral: true
 		});
@@ -37,7 +18,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o usuário possui o cargo
 	if (!targetMember.roles.cache.has(role.id)) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: `${targetUser} não possui o cargo ${role}.`,
 			ephemeral: true,
       allowedMentions: {
@@ -49,7 +30,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o bot pode gerenciar o cargo
 	if (role.position >= interaction.guild!.members.me!.roles.highest.position) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Não é possível remover este cargo (posição muito alta).',
 			ephemeral: true
 		});
@@ -57,7 +38,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 
 	// Verificar se o usuário pode gerenciar o cargo
 	if (role.position >= (interaction.member as any).roles.highest.position && interaction.user.id !== interaction.guild!.ownerId) {
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Você não pode remover este cargo (posição muito alta).',
 			ephemeral: true
 		});
@@ -95,14 +76,35 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['REMOVEROLE_LOG_ID']!);
 	} catch (error) {
 		console.error('Erro no comando removerole:', error);
-		return interaction.reply({
+		return await interaction.reply({
 			content: 'Erro ao remover cargo.',
 			ephemeral: true
 		});
 	}
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'removerole',
+	description: 'Remove um cargo de um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'De quem tirar cargo',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.Role,
+			name: 'cargo',
+			description: 'Qual cargo tirar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que tirar cargo',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ManageRoles
+}, execute);

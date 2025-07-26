@@ -1,58 +1,67 @@
-import { Message } from "discord.js";
+import { Message, TextChannel } from "discord.js";
+import { directMentionPrompt, replyToIAPrompt, replyToOtherUserPrompt } from "./prompts";
+
+function escapeMention(content: string, id: string, username: string) {
+  const mentionSyntax = `<@${id}>`;
+  const escapedMention = mentionSyntax.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const mentionRegex = new RegExp(escapedMention, 'g');
+  content = content.replace(mentionRegex, username);
+  return content;
+}
 
 export default async function buildPrompt(message: Message, client: any) {
-  const channel = {
-    // @ts-ignore
-    name: message.channel.name,
-    type: message.channel.isVoiceBased() ? 'voice' : 'text',
-    // @ts-ignore
-    category: message.channel.parent?.name ?? null
-  };
+  const channel = message.channel as TextChannel;
 
-  const author = {
+  const prompt = {
+    system: directMentionPrompt,
+    data: {
+      channel: {
+        category: channel.parent?.name ?? '',
+        name: channel.name
+      },
+      user: {}
+    }
+  }
+
+  const user = {
     name: message.member?.displayName,
-    joinedAt: message.member?.joinedAt?.toISOString()
+    message: message.content
   };
 
   // Limpa menção ao bot
-  let content = message.content.replace(`<@${client.user.id}>`, '').trim();
+  user.message = message.content.replace(`<@${client.user.id}>`, '').trim();
 
   // Substitui menções de outros usuários pelo displayName
-  for (const user of message.mentions.users.values()) {
-    if (user.id === client.user.id) continue;
-
-    const mentionSyntax = `<@${user.id}>`;
-    const escapedMention = mentionSyntax.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const mentionRegex = new RegExp(escapedMention, 'g');
-    content = content.replace(mentionRegex, user.displayName);
+  for (const userMention of message.mentions.users.values()) {
+    user.message = escapeMention(user.message, userMention.id, userMention.displayName);
   }
 
-  const promptContext = {
-    channel,
-    author,
-    content,
-    timestamp: message.createdAt.toISOString()
-  };
+  prompt.data.user = user;
 
   // Captura a mensagem referenciada (se existir)
   if (message.reference?.messageId) {
     const ref = await message.channel.messages.fetch(message.reference.messageId);
 
     if (ref) {
+      let content = ref?.content;
+      // Substitui menções de outros usuários pelo displayName
+      for (const user of ref.mentions.users.values()) {
+        content = escapeMention(content, user.id, user.displayName);
+      }
+
+      if (ref.author.id === client.user.id) {
+        prompt.system = replyToIAPrompt;
+      } else {
+        prompt.system = replyToOtherUserPrompt;
+      }
+
       // @ts-ignore
-      promptContext.referencedMessage = ref?.content;
+      prompt.data.referencedMessage = {
+        author: ref?.author?.displayName,
+          content: content
+      }
     }
   }
-
-  // Captura nomes mencionados (se houver)
-  if (message.mentions.users.size > 0) {
-    // @ts-ignore
-    promptContext.mentionedUserNames = [...message.mentions.users.values()].map(user => {
-      if (user.id !== client.user.id) {
-        return user.displayName;
-      }
-    }).join(', ');
-  }
   
-  return JSON.stringify(promptContext);
+  return prompt;
 }

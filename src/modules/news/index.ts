@@ -1,4 +1,4 @@
-import { Client } from "discord.js";
+import { Client, TextChannel } from "discord.js";
 import cron from "node-cron";
 import sendLog from "../../shared/utils/log";
 import getNews from "./services/getNews";
@@ -18,53 +18,60 @@ interface Article {
   };
 }
 
-const articlesId = new Set();
-
 async function sendNews(client: Client<boolean>) {
-  const articles = await getNews({ limit: 2 }) as Article[];
+  let articles = await getNews({ limit: 2 }) as Article[];
 
   if (articles.length === 0) {
     console.log('Nenhuma notícia encontrada no momento.');
     return;
   }
 
-  for (const article of articles) {
-    if (articlesId.has(String(article.id))) {
-      continue;
-    }
+  const newsChannel = await client.channels.fetch(process.env['NEWS_CHANNEL_ID']!) as TextChannel;
+  const oldNewsMessages = await newsChannel.messages.fetch({ limit: 5 });
 
+  for (const oldNew of oldNewsMessages.values()) {
+    const embeds = oldNew.embeds;
+    if (embeds.length > 0) {
+      const oldTitle = embeds[0].data.title
+      //@ts-ignore
+      articles = articles.map(article => {
+        if (article.title !== oldTitle) {
+          return article;
+        }
+      })
+    }
+  }
+
+  for (const article of articles) {
     await sendLog(client, {
       title: article.title,
       color: '#FFAF03',
-      description: `${article.description}\n\n[Leia o artigo completo](${article.url})\n\nFonte: [${article.source.name}](${article.source.url})`,
+      description: `${article.description}\n\n[Leia o artigo completo](${article.url})`,
       fields: []
     }, process.env['NEWS_CHANNEL_ID']!);
-
-    articlesId.add(String(article.id));
   }
 }
 
 const newsModule = {
-  load: (client: Client<boolean>) => {
-    const task = cron.schedule('0 */30 * * * *', () => {
+  init: (client: Client<boolean>) => {
+    const task = cron.schedule('*/30 * * * *', () => {
       sendNews(client);
     });
 
-    // Scheduler para parar às 24h
-    cron.schedule('0 0 * * *', () => {
-      articlesId.clear();
+    // Scheduler para parar
+    cron.schedule('0 22 * * *', () => {
       task.stop();
     });
 
-    // Scheduler para iniciar às 8h
-    cron.schedule('0 8 * * *', () => {
+    // Scheduler para iniciar
+    cron.schedule('0 10 * * *', () => {
       task.start();
     });
 
     // Para a task se estivermos fora do horário ao reiniciar o servidor
     const now = new Date();
     const hour = now.getHours();
-    if (hour < 8 || hour >= 24) {
+    if (hour < 10 || hour >= 22) {
       task.stop();
     }
   }

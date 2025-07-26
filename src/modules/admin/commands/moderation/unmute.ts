@@ -1,20 +1,6 @@
-import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import sendLog from '../../../../shared/utils/log';
-
-const data = new SlashCommandBuilder()
-	.setName('unmute')
-	.setDescription('Remove silenciamento de um usuário')
-	.addUserOption(option =>
-		option.setName('usuário')
-			.setDescription('Qual usuário desmutar')
-			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('motivo')
-			.setDescription('Por que desmutar')
-			.setRequired(true)
-	)
-	.setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers);
+import { createCommand } from '../../../../shared/handlers/createCommand';
 
 async function execute(interaction: ChatInputCommandInteraction) {
 	const targetUser = interaction.options.getUser('usuário', true);
@@ -26,7 +12,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 	const voiceState = targetMember?.voice;
 	
 	if (!voiceState?.channelId) {
-		return interaction.reply({ 
+		return await interaction.reply({ 
 			content: 'Usuário não está em canal de voz.', 
 			ephemeral: true 
 		});
@@ -34,7 +20,7 @@ async function execute(interaction: ChatInputCommandInteraction) {
 	
 	// Verificar se o usuário está mutado
 	// if (!voiceState.mute) {
-	// 	return interaction.reply({ 
+	// 	return await interaction.reply({ 
 	// 		content: 'Usuário não está mutado.', 
 	// 		ephemeral: true 
 	// 	});
@@ -68,14 +54,29 @@ async function execute(interaction: ChatInputCommandInteraction) {
 		}, process.env['UNMUTE_LOG_ID']!);
 	} catch (error) {
 		console.error('Erro no comando unmute:', error);
-		return interaction.reply({ 
+		return await interaction.reply({ 
 			content: 'Erro ao desmutar usuário.', 
 			ephemeral: true 
 		});
 	}
 }
 
-export default {
-	data,
-	execute
-}
+createCommand({
+	name: 'unmute',
+	description: 'Remove silenciamento de um usuário',
+	options: [
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'usuário',
+			description: 'Qual usuário desmutar',
+			required: true
+		},
+		{
+			type: ApplicationCommandOptionType.String,
+			name: 'motivo',
+			description: 'Por que desmutar',
+			required: true
+		}
+	],
+	defaultPermission: PermissionFlagsBits.ModerateMembers
+}, execute);
