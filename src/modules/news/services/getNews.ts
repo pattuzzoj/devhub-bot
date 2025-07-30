@@ -2,9 +2,6 @@ const queries = [
   // 1. Query original com AND — ampla, com tópicos e big techs
   encodeURIComponent(`(programação OR desenvolvimento OR software OR IA OR AI OR blockchain OR cloud OR segurança) AND (github OR openai OR microsoft OR google OR meta OR amazon OR ibm OR nvidia OR intel OR amd OR apple)`),
 
-  // 2. Linguagens, frameworks e ferramentas
-  encodeURIComponent(`python OR django OR flask OR "fastapi" OR javascript OR "node.js" OR react OR vue OR angular OR java OR "spring boot" OR php OR laravel`),
-
   // 3. Inovação, LLMs e tecnologias emergentes
   encodeURIComponent(`LLM OR transformers OR "deep learning" OR "agentes autônomos" OR web3 OR "edge computing" OR "stable diffusion" OR whisper OR "fine-tuning" OR "prompt engineering" OR quantização`),
 

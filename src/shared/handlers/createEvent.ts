@@ -15,7 +15,6 @@ export function createEvent(name: string, execute: (...args: any[]) => void) {
   }
 }
 
-
 export function loadEvents(client: Client) {
   events.forEach((event, name) => {
     client.on(name, async (...args) => {

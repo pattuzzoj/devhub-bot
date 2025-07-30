@@ -34,11 +34,7 @@ async function sendNews(client: Client<boolean>) {
     if (embeds.length > 0) {
       const oldTitle = embeds[0].data.title
       //@ts-ignore
-      articles = articles.map(article => {
-        if (article.title !== oldTitle) {
-          return article;
-        }
-      })
+      articles = articles.filter(article => (article && article.title !== oldTitle));
     }
   }
 
@@ -64,7 +60,7 @@ const newsModule = {
     });
 
     // Scheduler para iniciar
-    cron.schedule('0 10 * * *', () => {
+    cron.schedule('0 12 * * *', () => {
       task.start();
     });
 
